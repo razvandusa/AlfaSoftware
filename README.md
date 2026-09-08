@@ -2,13 +2,16 @@
 
 Modul de helpdesk (ticketing) construit peste ASiS ERP, pe SQL Server.
 Acoperă structura bazei, machetele CRUD din interfața web, indicatorii de
-performanță, raportul Vizor și expunerea datelor prin API REST.
+performanță, dashboard-ul Power BI, raportul Vizor și expunerea datelor prin
+API REST.
 
 Baza de lucru: `Student8`.
 
 ## Structura fișierelor
 
-Fiecare fișier corespunde unei etape din temă și se rulează în ordine.
+Fiecare fișier corespunde unei etape din temă. Scripturile SQL se rulează în
+ordinea numerelor, iar fișierul Power BI se deschide după ce view-urile din B5
+există în baza de date.
 
 | Fișier | Conținut |
 |---|---|
@@ -20,6 +23,7 @@ Fiecare fișier corespunde unei etape din temă și se rulează în ordine.
 | `SQLAlfaSoftwareB5.sql` | 7 view-uri și o procedură pentru indicatori |
 | `SQLAlfaSoftwareB7.sql` | Raport Vizor cu grupări și subtotaluri |
 | `SQLAlfaSoftwareB9-10.sql` | API REST: GET listă tickete, POST creare ticket |
+| `AlfaSoftware.pbix` | Dashboard Power BI peste tabelele și view-urile de indicatori |
 
 ## Modelul de date
 
@@ -70,6 +74,28 @@ O singură literă diferită face ca frame-ul să nu găsească atributul și s�
 câmpul gol, fără nicio eroare. Excepții impuse de frame, scrise cu litere mici:
 `@datajos`, `@datasus`, `@update`. În schimb `@nrPagina` și `@nrItemsPerPagina`
 sunt camelCase.
+
+## Dashboard Power BI
+
+`AlfaSoftware.pbix` citește tabelele `Tickete`, `Categorii`, `Prioritati` și
+`Personal` și view-urile de indicatori din B5: `vw_RespectareSLA`,
+`vw_TimpEfectiv_Responsabil` și `vw_TimpMediuRezolvare_Responsabil`. Tabela
+`Calendar` nu vine din SQL, e construită în model, ca axa de timp să fie
+continuă și în lunile fără tickete.
+
+Raportul are o singură pagină:
+
+- patru carduri: tickete deschise, tickete rezolvate, rata de respectare a SLA
+  și timpul mediu de rezolvare, în ore
+- tickete pe categorie, defalcate pe prioritate
+- evoluția în timp a ticketelor primite față de cele rezolvate
+- respectarea SLA pe categorie, plus un gauge pe total
+- încărcarea responsabililor: ore lucrate și tickete rezolvate
+- filtre pe perioadă, categorie și responsabil
+
+Conexiunea e salvată cu serverul folosit la construire, așa că la prima
+deschidere se schimbă din *Transform data → Data source settings*, apoi
+*Refresh*.
 
 ## Rulare
 
