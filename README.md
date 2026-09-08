@@ -1,117 +1,123 @@
-# AlfaSoftware — Helpdesk în ASiS ERP
+# AlfaSoftware — Helpdesk for ASiS ERP
 
-Modul de helpdesk (ticketing) construit peste ASiS ERP, pe SQL Server.
-Acoperă structura bazei, machetele CRUD din interfața web, indicatorii de
-performanță, dashboard-ul Power BI, raportul Vizor și expunerea datelor prin
-API REST.
+A helpdesk (ticketing) module built on top of ASiS ERP, on SQL Server. It covers
+the database structure, the CRUD screens in the web interface, the performance
+indicators, the Power BI dashboard, the Vizor report and exposing the data
+through a REST API.
 
-Baza de lucru: `Student8`.
+Working database: `Student8`.
 
-## Structura fișierelor
+## File layout
 
-Fiecare fișier corespunde unei etape din temă. Scripturile SQL se rulează în
-ordinea numerelor, iar fișierul Power BI se deschide după ce view-urile din B5
-există în baza de date.
+Each file corresponds to one stage of the assignment. The SQL scripts run in
+numeric order; the Power BI file is opened once the B5 views exist in the
+database.
 
-| Fișier | Conținut |
+| File | Contents |
 |---|---|
-| `SQLAlfaSoftwareA.sql` | Exerciții SQL pe baza existentă: SELECT, funcții, agregări, JOIN-uri, subinterogări și CTE, funcții fereastră, XML, DDL/CRUD |
-| `SQLAlfaSoftwareB1.sql` | Structura bazei: 6 tabele cu chei străine și constrângeri CHECK |
-| `SQLAlfaSoftwareB2.sql` | Date de test: nomenclatoare, tickete, jurnal, activități |
-| `SQLAlfaSoftwareB3.sql` | Trigger de jurnalizare a schimbărilor de stare |
-| `SQLAlfaSoftwareB4.sql` | 19 proceduri pentru machetele web: CRUD, autocomplete, export Excel |
-| `SQLAlfaSoftwareB5.sql` | 7 view-uri și o procedură pentru indicatori |
-| `SQLAlfaSoftwareB7.sql` | Raport Vizor cu grupări și subtotaluri |
-| `SQLAlfaSoftwareB9-10.sql` | API REST: GET listă tickete, POST creare ticket |
-| `AlfaSoftware.pbix` | Dashboard Power BI peste tabelele și view-urile de indicatori |
+| `SQLAlfaSoftwareA.sql` | SQL exercises against the existing database: SELECT, functions, aggregates, JOINs, subqueries and CTEs, window functions, XML, DDL/CRUD |
+| `SQLAlfaSoftwareB1.sql` | Database structure: 6 tables with foreign keys and CHECK constraints |
+| `SQLAlfaSoftwareB2.sql` | Test data: lookup tables, tickets, journal, activities |
+| `SQLAlfaSoftwareB3.sql` | Trigger that journals state changes |
+| `SQLAlfaSoftwareB4.sql` | 19 procedures for the web screens: CRUD, autocomplete, Excel export |
+| `SQLAlfaSoftwareB5.sql` | 7 views and one procedure for the indicators |
+| `SQLAlfaSoftwareB7.sql` | Vizor report with groupings and subtotals |
+| `SQLAlfaSoftwareB9-10.sql` | REST API: GET ticket list, POST create ticket |
+| `AlfaSoftware.pbix` | Power BI dashboard over the tables and the indicator views |
 
-## Modelul de date
+## Data model
 
 ```
-Categorii ─┐
-Prioritati ─┼─→ Tickete ─┬─→ JurnalTickete     (istoricul stărilor)
-StariTicket ┘      │      └─→ ActivitatiTicket (munca raportată)
-                   └──────────→ Personal        (solicitant, responsabil)
+Categorii   ─┐
+Prioritati  ─┼─→ Tickete ─┬─→ JurnalTickete     (state history)
+StariTicket ─┘            ├─→ ActivitatiTicket  (work reported)
+                          └─→ Personal          (requester, assignee)
 ```
 
-- **Tickete** — documentul central. Trece prin fluxul `Nou → Atribuit → In lucru → Rezolvat → Inchis`
-- **JurnalTickete** — scris automat de trigger la fiecare schimbare de stare
-- **ActivitatiTicket** — timpul efectiv lucrat, distinct de timpul calendaristic
-- **Personal** — tabela ASiS existentă; cheia e `Marca`, de tip `char(6)`, nu un id numeric
+- **Tickete** — the central document. Moves through the flow
+  `Nou → Atribuit → In lucru → Rezolvat → Inchis` (new → assigned → in progress
+  → resolved → closed)
+- **JurnalTickete** — written automatically by the trigger on every state change
+- **ActivitatiTicket** — the time actually worked, distinct from calendar time
+- **Personal** — the existing ASiS table; its key is `Marca`, a `char(6)`, not a
+  numeric id
 
-## Convenții ASiS respectate
+Table and column names stay in Romanian throughout, because they are the ones
+already used by ASiS.
 
-**Numele procedurilor** pornesc de la rolul lor în machetă:
+## ASiS conventions followed
 
-| Prefix | Rol |
+**Procedure names** start from their role in the screen:
+
+| Prefix | Role |
 |---|---|
-| `wIa…` | citire (antet, poziții, jurnal) |
-| `wScriu…` | inserare și modificare |
-| `wSterg…` | ștergere (fără „e", conform bazei) |
-| `wAC…` | autocomplete pentru liste de selecție |
-| `wOP…` | operații: export, rapoarte |
-| `pAPILink…` | endpoint expus prin `asisservice` |
+| `wIa…` | read (header, lines, journal) |
+| `wScriu…` | insert and update |
+| `wSterg…` | delete (spelled without the final "e", the way the database does it) |
+| `wAC…` | autocomplete for lookup lists |
+| `wOP…` | operations: exports, reports |
+| `pAPILink…` | endpoint exposed through `asisservice` |
 
-**Semnătura** e mereu `@sesiune varchar(50), @parXML xml`, iar utilizatorul se
-obține cu `wIaUtilizator`. Excepție fac endpoint-urile de API, care se
-autentifică prin cheie (`validareCheieAPI`), nu prin sesiune.
+**The signature** is always `@sesiune varchar(50), @parXML xml`, and the user is
+resolved with `wIaUtilizator`. The API endpoints are the exception: they
+authenticate with a key (`validareCheieAPI`) instead of a session.
 
-**Erorile** se prind în `TRY…CATCH` și se re-aruncă cu numele procedurii atașat,
-ca mesajul din interfață să spună de unde vine.
+**Errors** are caught in `TRY…CATCH` and re-thrown with the procedure name
+attached, so the message shown in the interface says where it came from.
 
-## Numele câmpurilor sunt case-sensitive
+## Field names are case-sensitive
 
-Colația bazei e `SQL_Latin1_General_CP1_CI_AS`, deci în T-SQL majusculele nu
-contează. **În XML contează.** Numele unui câmp trebuie scris identic în toate
-locurile prin care trece:
+The database collation is `SQL_Latin1_General_CP1_CI_AS`, so case does not
+matter in T-SQL. **In XML it does.** A field name has to be spelled identically
+in every place it travels through:
 
 ```
-coloana din tabelă → aliasul din wIa* → DataField din grid
-                  → DataField din form → calea XQuery din wScriu*
+table column → alias in wIa* → grid DataField
+             → form DataField → XQuery path in wScriu*
 ```
 
-O singură literă diferită face ca frame-ul să nu găsească atributul și să lase
-câmpul gol, fără nicio eroare. Excepții impuse de frame, scrise cu litere mici:
-`@datajos`, `@datasus`, `@update`. În schimb `@nrPagina` și `@nrItemsPerPagina`
-sunt camelCase.
+A single different letter makes the frame fail to find the attribute and leave
+the field empty, with no error at all. Exceptions imposed by the frame, spelled
+in lowercase: `@datajos`, `@datasus`, `@update`. `@nrPagina` and
+`@nrItemsPerPagina`, on the other hand, are camelCase.
 
-## Dashboard Power BI
+## Power BI dashboard
 
-`AlfaSoftware.pbix` citește tabelele `Tickete`, `Categorii`, `Prioritati` și
-`Personal` și view-urile de indicatori din B5: `vw_RespectareSLA`,
-`vw_TimpEfectiv_Responsabil` și `vw_TimpMediuRezolvare_Responsabil`. Tabela
-`Calendar` nu vine din SQL, e construită în model, ca axa de timp să fie
-continuă și în lunile fără tickete.
+`AlfaSoftware.pbix` reads the `Tickete`, `Categorii`, `Prioritati` and
+`Personal` tables, plus the indicator views from B5: `vw_RespectareSLA`,
+`vw_TimpEfectiv_Responsabil` and `vw_TimpMediuRezolvare_Responsabil`. The
+`Calendar` table does not come from SQL, it is built inside the model, so the
+time axis stays continuous in months with no tickets.
 
-Raportul are o singură pagină:
+The report is a single page:
 
-- patru carduri: tickete deschise, tickete rezolvate, rata de respectare a SLA
-  și timpul mediu de rezolvare, în ore
-- tickete pe categorie, defalcate pe prioritate
-- evoluția în timp a ticketelor primite față de cele rezolvate
-- respectarea SLA pe categorie, plus un gauge pe total
-- încărcarea responsabililor: ore lucrate și tickete rezolvate
-- filtre pe perioadă, categorie și responsabil
+- four cards: open tickets, resolved tickets, SLA compliance rate and average
+  resolution time, in hours
+- tickets per category, split by priority
+- tickets received against tickets resolved, over time
+- SLA compliance per category, plus a gauge on the total
+- assignee workload: hours logged and tickets resolved
+- slicers on period, category and assignee
 
-Conexiunea e salvată cu serverul folosit la construire, așa că la prima
-deschidere se schimbă din *Transform data → Data source settings*, apoi
+The connection is saved with the server it was built against, so on first open
+it has to be changed from *Transform data → Data source settings*, then
 *Refresh*.
 
-## Rulare
+## Running it
 
-Scripturile se execută în ordinea numerelor, în `Student8`. B1 și B2 se rulează
-o singură dată; restul folosesc `CREATE OR ALTER` și se pot re-rula oricând.
+The scripts execute in numeric order, against `Student8`. B1 and B2 run once;
+the rest use `CREATE OR ALTER` and can be re-run at any time.
 
-Pentru API mai trebuie o cheie de acces și înregistrarea rutelor:
+The API also needs an access key and the routes registered:
 
 ```sql
 INSERT INTO service.CheiOAuth (access_token, alias, utilizator, dataora)
-VALUES ('<cheia-ta>', 'HELPDESK', '<utilizator>', getdate())
+VALUES ('<your-key>', 'HELPDESK', '<user>', getdate())
 
 INSERT INTO webConfigLinkuri (proceduraSql, codLink) VALUES
     ('pAPILinkTickete',   'hd_tickete'),
     ('pAPILinkTicketNou', 'hd_ticketnou')
 ```
 
-Machetele se configurează în `webConfigTipuri`, `webConfigForm`,
-`webConfigGrid` și `webConfigFiltre`, pe meniul `TICKETING_APP`.
+The screens are configured in `webConfigTipuri`, `webConfigForm`,
+`webConfigGrid` and `webConfigFiltre`, under the `TICKETING_APP` menu.
